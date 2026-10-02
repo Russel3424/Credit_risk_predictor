@@ -305,9 +305,6 @@ print(f"\nDebtRatio > 1")
 print(f"{nb_debtratio} valeurs écrêtées à 1.0")
 
 # 3. TRAITEMENT DES VALEURS MANQUANTES
-print("\n" + "=" * 60)
-print("TRAITEMENT DES VALEURS MANQUANTES")
-print("=" * 60)
 
 # ── 3.1 MonthlyIncome — 19.8% manquants ─────────────────────
 
@@ -320,3 +317,39 @@ dataset["MonthlyIncome"] = dataset["MonthlyIncome"].fillna(mediane_revenu)
 
 mode_dependents = dataset["NumberOfDependents"].mode()[0]
 dataset["NumberOfDependents"] = dataset["NumberOfDependents"].fillna(mode_dependents)
+
+# 4. FEATURE ENGINEERING
+print("\n" + "=" * 60)
+print("FEATURE ENGINEERING")
+print("=" * 60)
+
+# ── 4.1 Total des incidents de retard ───────────────────────
+dataset["TotalRetards"] = (dataset["NumberOfTime30-59DaysPastDueNotWorse"] +dataset["NumberOfTimes90DaysLate"] +dataset["NumberOfTime60-89DaysPastDueNotWorse"])
+corr_total_retards = dataset["TotalRetards"].corr(dataset["SeriousDlqin2yrs"])
+print(f"TotalRetards créé")
+print(f"Corrélation avec défaut : {corr_total_retards:.4f}")
+
+# ── 4.2 Revenu par personne à charge ────────────────────────
+
+dataset["RevenuParPersonne"] = (dataset["MonthlyIncome"] /(dataset["NumberOfDependents"] + 1))
+corr_revenu_personne = dataset["RevenuParPersonne"].corr(dataset["SeriousDlqin2yrs"])
+print(f"\nRevenuParPersonne créé")
+print(f"Corrélation avec défaut : {corr_revenu_personne:.4f}")
+
+# ── 4.3 Log du revenu mensuel ───────────────────────────────
+
+dataset["MonthlyIncome_log"] = np.log1p(dataset["MonthlyIncome"])
+print(f"\nMonthlyIncome_log créé")
+print(f"Skewness avant log : {dataset['MonthlyIncome'].skew():.3f}")
+print(f"Skewness après log : {dataset['MonthlyIncome_log'].skew():.3f}")
+
+# 5. VÉRIFICATION FINALE
+print("\n" + "=" * 60)
+print("VÉRIFICATION FINALE")
+print("=" * 60)
+print(f"\nDimensions finales : {dataset.shape}")
+print(f"\nValeurs manquantes restantes :")
+manquants = dataset.isnull().sum()
+if manquants.sum() == 0:
+    print("   ✅ Aucune valeur manquante")
+print("\n✅ Étape 3 terminée — prêt pour la modélisation (Étape 4)")

@@ -202,3 +202,42 @@ plt.suptitle("Taux de défaut par variable clé", fontsize=14, fontweight="bold"
 plt.tight_layout()
 plt.show()
 
+# 5. CORRÉLATIONS de chaque variable AVEC LA TARGET
+
+corr = dataset.drop(columns=["age_tranche", "revenu_tranche","credit_lines_tranche","revolving_tranche","immobilier_tranche","debtratio_tranche"]).corr()["SeriousDlqin2yrs"].drop("SeriousDlqin2yrs").sort_values(ascending=False)
+
+print("corrélation de chaque variable avec SeriousDlqin2yrs:\n",corr.round(4))
+
+plt.figure(figsize=(8, 5))
+corr.plot(kind="barh", color=["tomato" if x > 0
+                               else "steelblue" for x in corr],
+          edgecolor="black")
+plt.title("Corrélation des features avec le défaut de crédit")
+plt.xlabel("Corrélation")
+plt.axvline(0, color="black", linewidth=0.8)
+plt.tight_layout()
+plt.show()
+
+# 6. DÉTECTION DES OUTLIERS CRITIQUES
+
+print("\n" + "=" * 60)
+print("DÉTECTION DES VALEURS ABERRANTES")
+print("=" * 60)
+
+# Valeurs suspectes dans les colonnes de retard de paiement
+cols_retard = ["NumberOfTime30-59DaysPastDueNotWorse","NumberOfTimes90DaysLate","NumberOfTime60-89DaysPastDueNotWorse"]
+for col in cols_retard:
+    val_98 = dataset[col].quantile(0.98)
+    suspects = (dataset[col] > val_98).sum()
+    print(f"\n{col}")
+    print(f"   98ème percentile : {val_98}")
+    print(f"   Valeurs > 98ème  : {suspects} ({suspects/len(dataset)*100:.2f}%)")
+    print(f"   Max              : {dataset[col].max()}")
+
+# Age aberrant
+print(f"\nAge minimum : {dataset['age'].min()} ans ← suspect si = 0")
+print(f"Age maximum : {dataset['age'].max()} ans")
+
+# RevolvingUtilization > 1
+suspect_revolving = (dataset["RevolvingUtilizationOfUnsecuredLines"] > 1).sum()
+print(f"\nRevolvingUtilization > 1 (impossible) : {suspect_revolving} lignes")

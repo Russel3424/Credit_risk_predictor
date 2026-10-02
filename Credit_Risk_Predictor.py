@@ -91,6 +91,29 @@ plt.suptitle("Distribution de chaque feature", fontsize=13)
 plt.tight_layout()
 plt.show()
 
+# 3. TAUX DE DÉFAUT PAR Tranche d'âge
+
+print("\n" + "=" * 60)
+print("TAUX DE DÉFAUT PAR TRANCHE D'ÂGE")
+print("=" * 60)
+
+plt.figure(figsize=(10,5))
+plt.plot(taux_defaut_age.index,taux_defaut_age.values)
+plt.show()
+dataset["age_tranche"] = pd.cut(dataset["age"],
+                                bins=[0, 20,30, 40, 50, 60, 70, 80,90,100,109],
+                                labels=["<20","20-30", "30-40", "40-50","50-60", "60-70", "70-80","80-90","90-100","100-109"])
+taux_defaut_age = dataset.groupby("age_tranche", observed=True)["SeriousDlqin2yrs"].mean() * 100
+print(taux_defaut_age.round(2))
+plt.figure(figsize=(8, 4))
+taux_defaut_age.plot(kind="bar", color="red", edgecolor="black")
+plt.title("Taux de défaut par tranche d'âge (%)")
+plt.xlabel("Tranche d'âge")
+plt.ylabel("Taux de défaut (%)")
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.show()
+
 # 4. TAUX DE DÉFAUT PAR TRANCHE DE REVENU
 
 print("\n" + "=" * 60)

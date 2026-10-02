@@ -241,3 +241,82 @@ print(f"Age maximum : {dataset['age'].max()} ans")
 # RevolvingUtilization > 1
 suspect_revolving = (dataset["RevolvingUtilizationOfUnsecuredLines"] > 1).sum()
 print(f"\nRevolvingUtilization > 1 (impossible) : {suspect_revolving} lignes")
+
+#Etape3: Nettoyage du dataset et préparation des données
+
+# 1. SUPPRESSION DES COLONNES TEMPORAIRES DE L'EDA
+
+colonnes_temp = ["age_tranche", "revenu_tranche", "debtratio_tranche","immobilier_tranche", "credit_lines_tranche","revolving_tranche"]
+dataset = dataset.drop(columns=colonnes_temp, errors="ignore")
+
+# 2. TRAITEMENT DES VALEURS ABERRANTES
+
+print("\n" + "=" * 60)
+print("TRAITEMENT DES VALEURS ABERRANTES")
+print("=" * 60)
+
+# ── 2.1 Colonnes de retard  ──────
+
+cols_retard = ["NumberOfTime30-59DaysPastDueNotWorse","NumberOfTimes90DaysLate","NumberOfTime60-89DaysPastDueNotWorse"]
+
+#On cherche les valeurs maximales de chaque variable lorsqu'on exclu les outliers 96 et 98 et on fait elles nos seuils
+for col in cols_retard:
+    max_reel = dataset[col][dataset[col] < 90].max()
+    print(f"{col}")
+    print(f"   Max réel (sans 96/98) : {max_reel}\n")
+    
+# On remplace les valeurs > à son seuil par la médiane de chaque colonne
+seuils_retard = {"NumberOfTime30-59DaysPastDueNotWorse" : 13,"NumberOfTimes90DaysLate": 17,"NumberOfTime60-89DaysPastDueNotWorse" : 11}
+
+for col, seuil in seuils_retard.items():
+    # Calcul de la médiane sur les valeurs réelles uniquement
+    mediane = dataset[col][dataset[col] <= seuil].median()
+    # Nombre de valeurs aberrantes
+    nb_aberrants = (dataset[col] > seuil).sum()
+    # Remplacement
+    dataset.loc[dataset[col] > seuil, col] = mediane
+    print(f"\n── {col}")
+    print(f"Seuil réel max    : {seuil}")
+    print(f"Médiane calculée  : {mediane}")
+    print(f"Valeurs corrigées : {nb_aberrants}")
+
+# ── 2.2 Remplaçons les âges 0 par la médiane ───────────────────────────────────
+
+nb_age_zero = (dataset["age"] == 0).sum()
+mediane_age  = dataset["age"][dataset["age"] > 0].median()
+dataset.loc[dataset["age"] == 0, "age"] = mediane_age
+
+print(f"\nage = 0")
+print(f"{nb_age_zero} valeurs remplacées par médiane ({mediane_age})")
+
+# ── 2.3 RevolvingUtilization — écrêtage à 1 ─────────────────
+
+nb_revolving = (dataset["RevolvingUtilizationOfUnsecuredLines"] > 1).sum()
+dataset["RevolvingUtilizationOfUnsecuredLines"] = \
+    dataset["RevolvingUtilizationOfUnsecuredLines"].clip(upper=1)
+print(f"\nRevolvingUtilizationOfUnsecuredLines > 1")
+print(f"{nb_revolving} valeurs écrêtées à 1.0")
+
+# ── 2.4 DebtRatio — écrêtage à 1 ────────────────────────────
+
+nb_debtratio = (dataset["DebtRatio"] > 1).sum()
+dataset["DebtRatio"] = dataset["DebtRatio"].clip(upper=1)
+print(f"\nDebtRatio > 1")
+print(f"{nb_debtratio} valeurs écrêtées à 1.0")
+
+# 3. TRAITEMENT DES VALEURS MANQUANTES
+print("\n" + "=" * 60)
+print("TRAITEMENT DES VALEURS MANQUANTES")
+print("=" * 60)
+
+# ── 3.1 MonthlyIncome — 19.8% manquants ─────────────────────
+
+# On impute par la médiane — plus robuste que la moyenne
+# face aux revenus extrêmes encore présents
+mediane_revenu = dataset["MonthlyIncome"].median()
+dataset["MonthlyIncome"] = dataset["MonthlyIncome"].fillna(mediane_revenu)
+
+# ── 3.2 NumberOfDependents — 2.6% manquants ─────────────────
+
+mode_dependents = dataset["NumberOfDependents"].mode()[0]
+dataset["NumberOfDependents"] = dataset["NumberOfDependents"].fillna(mode_dependents)

@@ -439,3 +439,51 @@ print(f"Défauts dans test: {y_test.sum()}  ({y_test.mean()*100:.2f}%)")
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled  = scaler.transform(X_test)
+
+# 4. DÉFINITION DES MODÈLES
+modeles = {
+    "Régression Logistique" : {
+        "modele" : LogisticRegression(
+            class_weight="balanced",# gère le déséquilibre
+            max_iter=1000,
+            random_state=42),
+        "scaled" : True # nécessite normalisation
+    },
+
+    "Random Forest" : {
+        "modele" : RandomForestClassifier(n_estimators=100,class_weight="balanced",random_state=42,n_jobs=-1),"scaled" : False
+    },
+
+    "XGBoost" : {
+        "modele" : XGBClassifier(n_estimators=200,max_depth=4,learning_rate=0.1,
+            scale_pos_weight=13,       # ratio 93/7 → poids classe minoritaire
+            eval_metric="auc",random_state=42,verbosity=0),
+        "scaled" : False
+    }
+}
+# 5.CROSS VALIDATION et évaluation des performances de chaque model
+
+# StratifiedKFold permet de conserver le ratio 93/7 dans chaque fold
+skfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+resultats = []
+for nom, config in modeles.items():
+    modele = config["modele"]
+    X_cv = X_train_scaled if config["scaled"] else X_train #permet de choisir les données à utiliser selon que le modèle nécessite une normalisation ou non
+    # AUC-ROC comme métrique principale en scoring bancaire
+    scores_auc = cross_val_score(modele,X_cv,y_train,cv=skfold,scoring="roc_auc",n_jobs=-1)
+    resultats.append({
+        "Modèle": nom,
+        "AUC moyen": round(scores_auc.mean(), 4),
+        "AUC std": round(scores_auc.std(), 4),})
+    print("Performance de chacun des models:\n")
+    print(f"\n{nom}")
+    print(f"AUC moyen : {scores_auc.mean():.4f} (± {scores_auc.std():.4f})")
+
+# Tableau comparatif des model
+print("\n" + "=" * 60)
+print("TABLEAU COMPARATIF")
+print("=" * 60)
+df_resultats = pd.DataFrame(resultats).sort_values("AUC moyen", ascending=False)
+df_resultats = df_resultats.reset_index(drop=True)
+df_resultats.index += 1
+print(df_resultats.to_string())

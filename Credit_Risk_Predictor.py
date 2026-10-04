@@ -372,3 +372,29 @@ plt.title("MonthlyIncome_log")
 
 plt.tight_layout()
 plt.show()
+
+# CORRECTION — MonthlyIncome = 0 traité comme valeur manquante
+
+nb_MonthlyIncome_zero = (dataset["MonthlyIncome"] == 0).sum()
+mediane_MonthlyIncome  = dataset["MonthlyIncome"][dataset["MonthlyIncome"] > 0].median()
+dataset.loc[dataset["MonthlyIncome"] == 0, "MonthlyIncome"] = mediane_MonthlyIncome
+
+#Recalculer la transformation log
+dataset["MonthlyIncome_log"] = np.log1p(dataset["MonthlyIncome"])
+print(f"\nSkewness MonthlyIncome brut: {dataset['MonthlyIncome'].skew():.3f}")
+print(f"Skewness MonthlyIncome_log: {dataset['MonthlyIncome_log'].skew():.3f}")
+print(f"Min MonthlyIncome_log: {dataset['MonthlyIncome_log'].min():.3f}")
+
+# Recalcul de RevenuParPersonne avec les nouvelles valeurs
+dataset["RevenuParPersonne"] = (dataset["MonthlyIncome"] /(dataset["NumberOfDependents"] + 1))
+corr_revenu = dataset["RevenuParPersonne"].corr(dataset["SeriousDlqin2yrs"])
+print(f"Corrélation RevenuParPersonne → défaut : {corr_revenu:.4f}")
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.hist(dataset["MonthlyIncome"].clip(upper=20000),bins=50, color="steelblue", edgecolor="none")
+plt.title("MonthlyIncome (clipé à 20k)")
+plt.subplot(1, 2, 2)
+plt.hist(dataset["MonthlyIncome_log"],bins=50, color="seagreen", edgecolor="none")
+plt.title("MonthlyIncome_log")
+plt.tight_layout()
+plt.show()

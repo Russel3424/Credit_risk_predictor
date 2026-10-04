@@ -352,4 +352,23 @@ print(f"\nValeurs manquantes restantes :")
 manquants = dataset.isnull().sum()
 if manquants.sum() == 0:
     print("   ✅ Aucune valeur manquante")
-print("\n✅ Étape 3 terminée — prêt pour la modélisation (Étape 4)")
+
+# vérifions si il y'a des clients avec un MonthlyIncome=0
+print("Valeurs MonthlyIncome = 0 :",(dataset["MonthlyIncome"] == 0).sum())
+print("\nDistribution de MonthlyIncome_log :")
+print(dataset["MonthlyIncome_log"].describe())
+
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 2, 1)
+plt.hist(dataset["MonthlyIncome"].clip(upper=20000),
+         bins=50, color="steelblue", edgecolor="none")
+plt.title("MonthlyIncome (clipé à 20k)")
+
+plt.subplot(1, 2, 2)
+plt.hist(dataset["MonthlyIncome_log"],
+         bins=50, color="seagreen", edgecolor="none")
+plt.title("MonthlyIncome_log")
+
+plt.tight_layout()
+plt.show()

@@ -398,3 +398,44 @@ plt.hist(dataset["MonthlyIncome_log"],bins=50, color="seagreen", edgecolor="none
 plt.title("MonthlyIncome_log")
 plt.tight_layout()
 plt.show()
+
+# Étape 4 : Modélisation
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (classification_report, confusion_matrix,
+                             roc_auc_score, roc_curve, precision_recall_curve)
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
+import warnings
+warnings.filterwarnings("ignore")
+
+# 1. SÉLECTION DES FEATURES FINALES
+
+features = ["RevolvingUtilizationOfUnsecuredLines","age","TotalRetards","DebtRatio","MonthlyIncome_log","NumberOfOpenCreditLinesAndLoans","NumberRealEstateLoansOrLines","NumberOfDependents","RevenuParPersonne"]
+X = dataset[features]
+y = dataset["SeriousDlqin2yrs"]
+print(f"\nDistribution de la target :")
+print(f"Classe 0 (pas de défaut):{(y==0).sum()} ({(y==0).mean()*100:.1f}%)")
+print(f"Classe 1 (défaut):{(y==1).sum()} ({(y==1).mean()*100:.1f}%)")
+
+# 2. SÉPARATION TRAIN / TEST
+
+print("\n" + "=" * 60)
+print("SÉPARATION TRAIN / TEST")
+print("=" * 60)
+
+# Stratified split → conserve le ratio 93/7 dans train et test
+X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=0.2,random_state=42,stratify=y # Permet d'avoir le même déséquilibré dz data dans chaque split#
+)
+
+print(f"\nTrain : {X_train.shape[0]} lignes")
+print(f"Test : {X_test.shape[0]} lignes")
+print(f"\nDéfauts dans train : {y_train.sum()} ({y_train.mean()*100:.2f}%)")
+print(f"Défauts dans test: {y_test.sum()}  ({y_test.mean()*100:.2f}%)")
+
+# 3. NORMALISATION (pour la Régression Logistique)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled  = scaler.transform(X_test)

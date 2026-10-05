@@ -479,7 +479,7 @@ for nom, config in modeles.items():
     print(f"\n{nom}")
     print(f"AUC moyen : {scores_auc.mean():.4f} (± {scores_auc.std():.4f})")
 
-# Tableau comparatif des model
+# Tableau comparatif des modeles
 print("\n" + "=" * 60)
 print("TABLEAU COMPARATIF")
 print("=" * 60)
@@ -487,3 +487,72 @@ df_resultats = pd.DataFrame(resultats).sort_values("AUC moyen", ascending=False)
 df_resultats = df_resultats.reset_index(drop=True)
 df_resultats.index += 1
 print(df_resultats.to_string())
+
+# 6. ENTRAÎNEMENT DU MEILLEUR MODÈLE SUR TOUT LE TRAIN
+modele_final = XGBClassifier(
+    n_estimators=200,
+    max_depth=4,
+    learning_rate=0.1,
+    scale_pos_weight=13,
+    eval_metric="auc",
+    random_state=42,
+    verbosity=0)
+modele_final.fit(X_train, y_train)
+
+# 7. ÉVALUATION FINALE SUR LE TEST SET
+
+print("\n" + "=" * 60)
+print("ÉVALUATION FINALE SUR LE TEST SET")
+print("=" * 60)
+# Probabilités de défaut (entre 0 et 1)
+y_pred_proba = modele_final.predict_proba(X_test)[:, 1]#retourne pour chaque client la probabilité qu'il fasse défaut et la proba qu'il ne fasse pas défaut mais conserve uniquement la colonne des défautgrâce à [:,1]
+print("probabilité de defaut de chauqe client du :\n",y_pred_proba)
+# Prédictions avec seuil par défaut à 0.5
+y_pred = modele_final.predict(X_test)
+print("y_pred")
+# AUC-ROC
+auc = roc_auc_score(y_test, y_pred_proba)
+print(f"\nAprès evaluation sur le testset AUC-ROC : {auc:.4f}")
+# Gini coefficient — métrique standard bancaire
+gini = 2 * auc - 1
+print(f"Gini : {gini:.4f}")
+# Rapport de classification
+print(f"\nRapport de classification :")
+print(classification_report(y_test, y_pred, target_names=["Pas défaut", "Défaut"]))
+# Matrice de confusion
+cm = confusion_matrix(y_test, y_pred)
+print(f"Matrice de confusion :")
+print(f"                  Prédit 0    Prédit 1")
+print(f"   Réel 0 (ok)  : {cm[0,0]:>8}  {cm[0,1]:>8}")
+print(f"   Réel 1 (def) : {cm[1,0]:>8}  {cm[1,1]:>8}")
+
+# ============================================================
+# 8. COURBES ROC ET PRECISION-RECALL
+# ============================================================
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# Courbe ROC
+#fpr=taux de faux positifs
+#tpr=taux de vrai positifs
+fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+axes[0].plot(fpr, tpr, color="red", linewidth=2,label=f"XGBoost (AUC = {auc:.4f})")
+axes[0].plot([0,1], [0,1], color="gray", linestyle="--", label="Aléatoire")
+axes[0].fill_between(fpr, tpr, alpha=0.1, color="tomato")
+axes[0].set_xlabel("Taux de faux positifs")
+axes[0].set_ylabel("Taux de vrais positifs")
+axes[0].set_title("Courbe ROC")
+axes[0].legend()
+
+# Courbe Precision-Recall
+precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+axes[1].plot(recall, precision, color="blue", linewidth=2)
+axes[1].axhline(y=y_test.mean(), color="gray", linestyle="--",label=f"Baseline ({y_test.mean():.3f})")#trace une ligne horizontale à y=0.067 c'est la baseline. un modèle qui prédit défaut au hasard atteindrait une précision de 6.7% (le taux naturel de défaut)
+axes[1].set_xlabel("Recall")
+axes[1].set_ylabel("Précision")
+axes[1].set_title("Courbe Precision-Recall")
+axes[1].legend()
+
+plt.suptitle("Évaluation du modèle XGBoost", fontsize=13)
+plt.tight_layout()
+plt.show()

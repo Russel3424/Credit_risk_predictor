@@ -556,3 +556,10 @@ axes[1].legend()
 plt.suptitle("Évaluation du modèle XGBoost", fontsize=13)
 plt.tight_layout()
 plt.show()
+
+# Calcul du KS Statistic
+from scipy.stats import ks_2samp
+scores_defaut    = y_pred_proba[y_test == 1]
+scores_non_defaut = y_pred_proba[y_test == 0]
+ks_stat, ks_pvalue = ks_2samp(scores_defaut, scores_non_defaut)
+print(f"KS Statistic : {ks_stat:.4f}")

@@ -653,3 +653,85 @@ print(f"   Réel 1 (déf) : {cm_optimal[1,0]:>8}  {cm_optimal[1,1]:>8}")
 
 print(f"\nRapport de classification (seuil = {seuil_optimal}) :")
 print(classification_report(y_test, y_pred_optimal,target_names=["Pas défaut", "Défaut"]))
+
+# Étape 5: Explicabilité du modèle en utilisant SHAP Values
+import shap
+import warnings
+warnings.filterwarnings("ignore")
+
+# 1. CALCUL DES SHAP VALUES
+# Explainer SHAP adapté à XGBoost
+explainer = shap.TreeExplainer(modele_final)
+shap_values = explainer.shap_values(X_test)
+print("SHAP Values calculées")
+print(f"Dimensions : {shap_values.shape}")
+
+# 2. IMPORTANCE GLOBALE DES FEATURES
+print("\n" + "=" * 60)
+print("IMPORTANCE GLOBALE DES FEATURES")
+print("=" * 60)
+
+# Importance moyenne de chaque feature
+shap_importance = pd.DataFrame({
+    "Feature": features,
+    "Importance" : np.abs(shap_values).mean(axis=0)
+}).sort_values("Importance", ascending=False).reset_index(drop=True)
+shap_importance.index += 1
+
+print(shap_importance.to_string())
+# Graphique importance globale
+plt.figure(figsize=(10, 6))
+plt.barh(shap_importance["Feature"][::-1],shap_importance["Importance"][::-1],color="blue", edgecolor="black")
+plt.xlabel("Importance SHAP moyenne")
+plt.title("Importance globale des features — SHAP")
+plt.tight_layout()
+plt.show()
+
+# 3. BEESWARM PLOT : Vue d'ensemble complète
+shap.summary_plot(shap_values,X_test,feature_names=features,show=True)
+
+# 4. EXPLICATION D'UN CLIENT SPÉCIFIQUE
+print("\n" + "=" * 60)
+print("EXPLICATION CLIENT INDIVIDUEL")
+print("=" * 60)
+# On prend le client avec le score de risque le plus élevé
+idx_risque_max = y_pred_proba.argmax()
+client_risque= X_test.iloc[idx_risque_max]
+score_risque = y_pred_proba[idx_risque_max]
+reel = y_test.iloc[idx_risque_max]
+
+print(f"\nClient sélectionné : index {idx_risque_max}")
+print(f"Score de risque : {score_risque:.4f} ({score_risque*100:.1f}%)")
+print(f"Défaut réel : {'OUI' if reel == 1 else 'NON'}")
+print(f"\nProfil du client :")
+for feat in features:
+    print(f"   {feat:<45} : {client_risque[feat]:.4f}")
+
+# Waterfall plot — explication visuelle
+shap.waterfall_plot(
+    shap.Explanation(
+        values       = shap_values[idx_risque_max],
+        base_values  = explainer.expected_value,
+        data         = client_risque.values,
+        feature_names= features
+    )
+)
+
+# 5. COMPARAISON — CLIENT RISQUÉ vs CLIENT SÛR
+print("\n" + "=" * 60)
+print("COMPARAISON CLIENT RISQUÉ vs CLIENT SÛR")
+print("=" * 60)
+# Client le plus sûr
+idx_risque_min = y_pred_proba.argmin()
+client_sur = X_test.iloc[idx_risque_min]
+score_sur = y_pred_proba[idx_risque_min]
+reel_sur = y_test.iloc[idx_risque_min]
+
+print(f"\n{'Feature':<45} {'Client risqué':>15} {'Client sûr':>12}")
+print("-" * 75)
+for feat in features:
+    print(f"{feat:<45} {client_risque[feat]:>15.4f} {client_sur[feat]:>12.4f}")
+
+print(f"\n{'Score de risque':<45} {score_risque:>15.4f} {score_sur:>12.4f}")
+print(f"{'Défaut réel':<45} {'OUI' if reel==1 else 'NON':>15} {'OUI' if reel_sur==1 else 'NON':>12}")
+

@@ -735,3 +735,86 @@ for feat in features:
 print(f"\n{'Score de risque':<45} {score_risque:>15.4f} {score_sur:>12.4f}")
 print(f"{'Défaut réel':<45} {'OUI' if reel==1 else 'NON':>15} {'OUI' if reel_sur==1 else 'NON':>12}")
 
+# Étape 6A : Sauvegarde du modèle
+import joblib
+import os
+
+# 1. CRÉATION DU DOSSIER DE SAUVEGARDE
+dossier = "model"
+os.makedirs(dossier, exist_ok=True)
+
+print("=" * 60)
+print("SAUVEGARDE DES ARTEFACTS DU MODÈLE")
+print("=" * 60)
+# 2. SAUVEGARDE DES ARTEFACTS
+# Modèle XGBoost entraîné
+joblib.dump(modele_final, f"{dossier}/model_xgboost.pkl")
+print(f"\nModèle XGBoost enregistré sous {dossier}/model_xgboost.pkl")
+
+# Liste des features dans le bon ordre
+joblib.dump(features, f"{dossier}/features.pkl")
+print(f"Features enregistré sous {dossier}/features.pkl")
+
+# Seuil optimal retenu
+joblib.dump(float(seuil_optimal), f"{dossier}/seuil_optimal.pkl")
+print(f"Seuil optimal ({seuil_optimal}) enregistré sous {dossier}/seuil_optimal.pkl")
+
+# Explainer SHAP
+joblib.dump(explainer, f"{dossier}/shap_explainer.pkl")
+print(f"SHAP Explainer enregistré sous {dossier}/shap_explainer.pkl")
+
+# Métriques du modèle
+metriques = {
+    "AUC": round(auc, 4),
+    "Gini": round(gini, 4),
+    "KS": round(ks_stat, 4),
+    "Seuil_optimal" : float(seuil_optimal),
+    "Recall_defaut" : round(float(meilleur["Recall"]), 3),
+    "Precision_defaut" : round(float(meilleur["Precision"]), 3),
+}
+joblib.dump(metriques, f"{dossier}/metriques.pkl")
+print(f"Métriques enregistré sous {dossier}/metriques.pkl")
+
+# 3. VÉRIFICATION 
+print("\n" + "=" * 60)
+print("VÉRIFICATION DES FICHIERS SAUVEGARDÉS")
+print("=" * 60)
+
+modele_charge = joblib.load(f"{dossier}/model_xgboost.pkl")
+features_charges = joblib.load(f"{dossier}/features.pkl")
+seuil_charge = joblib.load(f"{dossier}/seuil_optimal.pkl")
+metriques_charges = joblib.load(f"{dossier}/metriques.pkl")
+
+print(f"\n Features chargées: {features_charges}")
+print(f"Seuil chargé: {seuil_charge}")
+print(f"Métriques: {metriques_charges}")
+
+# 4. TEST AVEC UN CLIENT FICTIF
+print("\n" + "=" * 60)
+print("TEST AVEC UN CLIENT FICTIF")
+print("=" * 60)
+
+client_test = pd.DataFrame([{
+    "RevolvingUtilizationOfUnsecuredLines" : 0.85,
+    "age"                                  : 35,
+    "TotalRetards"                         : 3,
+    "DebtRatio"                            : 0.60,
+    "MonthlyIncome_log"                    : np.log1p(3500),
+    "NumberOfOpenCreditLinesAndLoans"      : 8,
+    "NumberRealEstateLoansOrLines"         : 1,
+    "NumberOfDependents"                   : 2,
+    "RevenuParPersonne"                    : 3500 / (2 + 1)
+}])
+proba_defaut = modele_charge.predict_proba(client_test)[0][1]
+decision = "REFUSER" if proba_defaut >= seuil_charge else "ACCORDER"
+
+print(f"\nProfil du client test :")
+print(f"Age: 35 ans")
+print(f"Revenu mensuel: 3 500 $")
+print(f"Total retards: 3 épisodes")
+print(f"Utilisation revolving: 85%")
+print(f"Ratio d'endettement  : 60%")
+print(f"\nProbabilité de défaut : {proba_defaut:.1%}")
+print(f"Seuil de décision: {seuil_charge:.2f}")
+print(f"Décision: {decision}")
+

@@ -617,9 +617,39 @@ plt.tight_layout()
 plt.show()
 
 # Affichage des seuils remarquables
-print("\nSeuil F1 maximum :")
-print(df_seuils.loc[df_seuils["F1"].idxmax()])
+print("\nSeuil avec F1 maximum :")
+print(df_seuils.loc[df_seuils["F1"].idxmax()])#Permet de trouver un compromis statistique netre Recall et precision afin d'éviter à la banque de perdre le maximum de clients à qui on refuse un crédit alors qu'il n'aurait pas fait défaut 
 
 print("\nSeuil avec Recall ≥ 0.80 et meilleure Precision :")
 filtres = df_seuils[df_seuils["Recall"] >= 0.80]
-print(filtres.loc[filtres["Precision"].idxmax()])
+print(filtres.loc[filtres["Precision"].idxmax()])#permet de détecter le maximum de clients susceptibles de faire défaut afin de reduire au maximum le risque financier de la banque
+
+#Chechons un compromis qui permettra à la banque de réduire ses risques en trouvant le maximum de clients qui vont faire défaut tout en réduisant ne nombre de bons clients à qui le crédit n'est pas accordé alors qu'ils ne  vont pas faire defaut
+print("=" * 60)
+print("Compromis")
+print("=" * 60)
+
+# Filtre : Recall ≥ 0.70
+candidats = df_seuils[df_seuils["Recall"] >= 0.70]
+
+# Meilleure Precision parmi ces candidats
+meilleur = candidats.loc[candidats["Precision"].idxmax()]
+
+print(f"\nSeuil optimal retenu : {meilleur['Seuil']}")
+print(f"Precision            : {meilleur['Precision']:.3f}")
+print(f"Recall               : {meilleur['Recall']:.3f}")
+print(f"F1                   : {meilleur['F1']:.3f}")
+print(f"Défauts ratés        : {meilleur['Faux Négatifs']:.0f}")
+print(f"Bons clients refusés : {meilleur['Faux Positifs']:.0f}")
+
+# Matrice de confusion avec ce seuil
+seuil_optimal = meilleur["Seuil"]
+y_pred_optimal = (y_pred_proba >= seuil_optimal).astype(int)
+cm_optimal = confusion_matrix(y_test, y_pred_optimal)
+print(f"\nMatrice de confusion (seuil = {seuil_optimal}) :")
+print(f"                  Prédit 0    Prédit 1")
+print(f"   Réel 0 (ok)  : {cm_optimal[0,0]:>8}  {cm_optimal[0,1]:>8}")
+print(f"   Réel 1 (déf) : {cm_optimal[1,0]:>8}  {cm_optimal[1,1]:>8}")
+
+print(f"\nRapport de classification (seuil = {seuil_optimal}) :")
+print(classification_report(y_test, y_pred_optimal,target_names=["Pas défaut", "Défaut"]))

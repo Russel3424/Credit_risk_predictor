@@ -563,3 +563,63 @@ scores_defaut    = y_pred_proba[y_test == 1]
 scores_non_defaut = y_pred_proba[y_test == 0]
 ks_stat, ks_pvalue = ks_2samp(scores_defaut, scores_non_defaut)
 print(f"KS Statistic : {ks_stat:.4f}")
+
+#Recherche du seuil optimal
+seuils= np.arange(0.1, 0.9, 0.01)
+resultats_seuils = []
+for seuil in seuils:
+    y_pred_seuil = (y_pred_proba >= seuil).astype(int)
+    from sklearn.metrics import precision_score, recall_score, f1_score
+    precision_s = precision_score(y_test, y_pred_seuil, zero_division=0)
+    recall_s = recall_score(y_test, y_pred_seuil)
+    f1_s = f1_score(y_test, y_pred_seuil)
+    faux_neg = ((y_pred_seuil == 0) & (y_test == 1)).sum()
+    faux_pos = ((y_pred_seuil == 1) & (y_test == 0)).sum()
+
+    resultats_seuils.append({
+        "Seuil"           : round(seuil, 2),
+        "Precision"       : round(precision_s, 3),
+        "Recall"          : round(recall_s, 3),
+        "F1"              : round(f1_s, 3),
+        "Faux Négatifs"   : faux_neg,
+        "Faux Positifs"   : faux_pos
+    })
+
+df_seuils = pd.DataFrame(resultats_seuils)
+
+# Visualisation
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+axes[0].plot(df_seuils["Seuil"], df_seuils["Precision"],
+             color="steelblue", label="Precision")
+axes[0].plot(df_seuils["Seuil"], df_seuils["Recall"],
+             color="tomato", label="Recall")
+axes[0].plot(df_seuils["Seuil"], df_seuils["F1"],
+             color="seagreen", label="F1")
+axes[0].axvline(x=0.5, color="gray", linestyle="--", label="Seuil actuel 0.5")
+axes[0].set_xlabel("Seuil de décision")
+axes[0].set_ylabel("Score")
+axes[0].set_title("Precision / Recall / F1 selon le seuil")
+axes[0].legend()
+
+axes[1].plot(df_seuils["Seuil"], df_seuils["Faux Négatifs"],
+             color="tomato", label="Défauts ratés (Faux Négatifs)")
+axes[1].plot(df_seuils["Seuil"], df_seuils["Faux Positifs"],
+             color="steelblue", label="Bons clients refusés (Faux Positifs)")
+axes[1].axvline(x=0.5, color="gray", linestyle="--", label="Seuil actuel 0.5")
+axes[1].set_xlabel("Seuil de décision")
+axes[1].set_ylabel("Nombre de clients")
+axes[1].set_title("Impact métier selon le seuil")
+axes[1].legend()
+
+plt.suptitle("Optimisation du seuil de décision", fontsize=13)
+plt.tight_layout()
+plt.show()
+
+# Affichage des seuils remarquables
+print("\nSeuil F1 maximum :")
+print(df_seuils.loc[df_seuils["F1"].idxmax()])
+
+print("\nSeuil avec Recall ≥ 0.80 et meilleure Precision :")
+filtres = df_seuils[df_seuils["Recall"] >= 0.80]
+print(filtres.loc[filtres["Precision"].idxmax()])

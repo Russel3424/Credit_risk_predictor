@@ -818,3 +818,12 @@ print(f"\nProbabilité de défaut : {proba_defaut:.1%}")
 print(f"Seuil de décision: {seuil_charge:.2f}")
 print(f"Décision: {decision}")
 
+# 5. taille des fichiers crées
+print("\n" + "=" * 60)
+print("taille des fichiers crées")
+print("=" * 60)
+for fichier in os.listdir(dossier):
+    chemin = os.path.join(dossier, fichier)
+    taille = os.path.getsize(chemin)
+    print(f"{fichier:<35} {taille:>10} bytes")
+

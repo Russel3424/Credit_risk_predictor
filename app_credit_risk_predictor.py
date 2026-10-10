@@ -532,11 +532,13 @@ def load_model():
     model     = joblib.load("model/model_xgboost.pkl")
     features  = joblib.load("model/features.pkl")
     threshold = float(joblib.load("model/seuil_optimal.pkl"))
-    explainer = joblib.load("model/shap_explainer.pkl")
+    
+    # Création dynamique de l'explainer SHAP (plus besoin du fichier shap_explainer.pkl)
+    explainer = shap.TreeExplainer(model)
+    
     return model, features, threshold, explainer
 
 model, FEATURES, THRESHOLD, explainer = load_model()
-
 # OUTILS
 
 def get_lang():
@@ -843,7 +845,7 @@ def main_app():
             with c19:
                 late_90 = st.number_input(T[lang]["f_late_90"], min_value=0, max_value=17, value=0, help=T[lang]["tip_late_90"])
 
-    #Colonne droite : panneau d'évaluation
+    #Colonne droite : panneau d'évaluation 
     with right:
         head_slot = st.empty()
         submit = st.button(T[lang]["btn_analyze"], type="primary")
